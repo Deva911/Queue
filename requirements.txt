@@ -1,0 +1,5 @@
+# Phase 1: local simulator only. tzdata gives Windows the time zone database.
+streamlit>=1.39,<2
+python-dotenv>=1.0,<2
+tzdata>=2024.1
+pytest>=8
