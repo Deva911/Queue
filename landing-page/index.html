@@ -1,0 +1,515 @@
+<title>WhatsApp Manager</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a front-desk ledger. Asymmetric hero (copy left, live chat + request slip right),
+   then plain bands. Signature detail: the PENDING status chip that only staff can flip. */
+:root {
+  --paper: #f5f6fa;
+  --card: #ffffff;
+  --ink: #1c1e21;
+  --muted: #65676b;
+  --line: #dadde1;
+  --accent: #0866ff;
+  --accent-ink: #ffffff;
+  --accent-soft: #e7f0ff;
+  --grad: linear-gradient(135deg, #00b2ff 0%, #0866ff 45%, #a033ff 80%, #ff5c87 100%);
+  --pending: #b26a00;
+  --pending-bg: #fff1d9;
+  --ok: #17734a;
+  --ok-bg: #dcf3e7;
+  --no: #a83232;
+  --no-bg: #fbe3e3;
+  --bubble-in: #f0f2f5;
+  --bubble-in-ink: #1c1e21;
+  --bubble-out-ink: #ffffff;
+  --chat-bg: #ffffff;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1115; --card: #1a1d23; --ink: #e4e6eb; --muted: #b0b3b8; --line: #33373e;
+    --accent: #4d94ff; --accent-ink: #ffffff; --accent-soft: #1b2a45;
+    --pending: #ffbf5c; --pending-bg: #3a2a10; --ok: #6fdba7; --ok-bg: #12362a; --no: #ff9494; --no-bg: #3d1a1a;
+    --bubble-in: #303338; --bubble-in-ink: #e4e6eb; --bubble-out-ink: #ffffff; --chat-bg: #16181c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1115; --card: #1a1d23; --ink: #e4e6eb; --muted: #b0b3b8; --line: #33373e;
+  --accent: #4d94ff; --accent-ink: #ffffff; --accent-soft: #1b2a45;
+  --pending: #ffbf5c; --pending-bg: #3a2a10; --ok: #6fdba7; --ok-bg: #12362a; --no: #ff9494; --no-bg: #3d1a1a;
+  --bubble-in: #303338; --bubble-in-ink: #e4e6eb; --bubble-out-ink: #ffffff; --chat-bg: #16181c;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--paper); color: var(--ink); font: 400 1.0625rem/1.6 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--display); line-height: 1.08; text-wrap: balance; margin: 0; letter-spacing: -0.015em; }
+h1 { font-size: clamp(2.4rem, 5.6vw, 4.1rem); font-weight: 800; }
+h2 { font-size: clamp(1.75rem, 3.4vw, 2.5rem); font-weight: 700; }
+h3 { font-size: 1.2rem; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--accent); }
+.eyebrow { font: 500 0.75rem/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--muted); font-size: 1.15rem; max-width: 34em; }
+
+.btn { display: inline-flex; align-items: center; gap: 8px; font: 600 1rem/1 var(--body); padding: 14px 20px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
+.btn-primary { background: var(--grad); color: #ffffff; }
+.btn-primary:hover { filter: brightness(1.06); }
+.btn-ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn:focus-visible, input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* nav */
+nav { padding-block: 22px; }
+nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.brand { font: 800 1.2rem/1 var(--display); display: flex; align-items: center; gap: 10px; }
+.mark { width: 28px; height: 28px; border-radius: 50%; background: var(--grad); color: #ffffff; display: grid; place-items: center; font: 500 0.7rem/1 var(--mono); }
+nav .links { display: flex; gap: 20px; flex-wrap: wrap; font-weight: 500; }
+nav .links a { color: var(--muted); text-decoration: none; }
+nav .links a:hover { color: var(--ink); }
+
+/* hero */
+.hero { padding-block: 28px 72px; }
+.hero .wrap { display: grid; grid-template-columns: 1.05fr 1fr; gap: 56px; align-items: center; }
+.hero-copy { display: grid; gap: 24px; min-width: 0; }
+.cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.fine { font-size: 0.9rem; color: var(--muted); }
+
+.stage { position: relative; min-width: 0; display: grid; gap: 16px; }
+.chat { background: var(--chat-bg); border-radius: 22px; padding: 18px; display: grid; gap: 8px; border: 1px solid var(--line); box-shadow: 0 18px 40px -28px rgba(8, 102, 255, 0.5); }
+.chat-head { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--grad); color: #ffffff; display: grid; place-items: center; font: 700 0.85rem/1 var(--display); position: relative; }
+.avatar::after { content: ""; position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; background: #31a24c; border: 2px solid var(--chat-bg); }
+.chat-head strong { display: block; font-size: 0.95rem; }
+.chat-head span { font-size: 0.78rem; color: var(--muted); }
+.msg { max-width: 82%; padding: 9px 13px; border-radius: 18px; font-size: 0.93rem; line-height: 1.45; background: var(--bubble-in); color: var(--bubble-in-ink); }
+.msg.out { justify-self: end; background: var(--grad); background-attachment: fixed; color: var(--bubble-out-ink); border-bottom-right-radius: 5px; }
+.msg.in { border-bottom-left-radius: 5px; }
+.msg .t { display: block; font: 500 0.66rem/1 var(--mono); color: var(--muted); margin-top: 5px; text-align: right; }
+.msg.out .t { color: rgba(255, 255, 255, 0.8); }
+.opts { list-style: none; margin: 8px 0 2px; padding: 0; display: grid; gap: 6px; }
+.opt { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; font: 500 0.9rem/1.25 var(--body); padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--chat-bg); color: var(--accent); cursor: pointer; }
+.opt::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.opt:hover { background: var(--accent-soft); }
+.opt[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.opt[aria-pressed="true"]::before { background: var(--grad); box-shadow: 0 0 0 3px var(--accent-soft); }
+.tap-hint { font-size: 0.78rem; color: var(--muted); text-align: center; }
+.bul { margin: 6px 0 0; padding-left: 18px; }
+.bul li::marker { color: var(--accent); }
+
+.slip { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: grid; gap: 12px; box-shadow: 0 10px 30px -18px rgba(20, 34, 51, 0.45); }
+.slip-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.slip dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: 0.9rem; }
+.slip dt { color: var(--muted); }
+.slip dd { margin: 0; font-variant-numeric: tabular-nums; }
+.slip-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.slip-actions button { font: 600 0.88rem/1 var(--body); padding: 10px 14px; border-radius: 8px; cursor: pointer; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+.slip-actions .confirm { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.slip-note { font-size: 0.8rem; color: var(--muted); }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 500 0.72rem/1 var(--mono); letter-spacing: 0.08em; padding: 6px 9px; border-radius: 999px; }
+.chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.chip.pending { color: var(--pending); background: var(--pending-bg); }
+.chip.confirmed { color: var(--ok); background: var(--ok-bg); }
+.chip.declined { color: var(--no); background: var(--no-bg); }
+.chip.human { color: var(--accent); background: var(--accent-soft); }
+
+/* bands */
+section.band { padding-block: 80px; border-top: 1px solid var(--line); }
+.band-head { display: grid; gap: 14px; margin-bottom: 40px; max-width: 46em; }
+
+/* menu section */
+.menu-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.menu-item { background: var(--card); padding: 26px 24px; display: grid; gap: 10px; align-content: start; }
+.menu-item h3 { display: flex; align-items: center; gap: 10px; }
+.menu-item h3::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--grad); }
+.menu-item p { color: var(--muted); font-size: 0.97rem; }
+.keywords { margin-top: 22px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 0.95rem; }
+kbd { font: 500 0.8rem/1 var(--mono); padding: 6px 9px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; background: var(--card); color: var(--ink); }
+
+/* business types */
+.types { display: grid; grid-template-columns: 240px 1fr; gap: 32px; align-items: start; }
+.tablist { display: grid; gap: 6px; }
+.tab { text-align: left; font: 600 1rem/1.3 var(--body); padding: 14px 16px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--card); color: var(--ink); border-color: var(--line); }
+.tab small { display: block; font-weight: 400; font-size: 0.85rem; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 28px; display: grid; gap: 20px; min-width: 0; }
+.svc-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.svc-table th { text-align: left; font: 500 0.72rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 0 12px 10px 0; border-bottom: 1px solid var(--line); }
+.svc-table td { padding: 12px 12px 12px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.svc-table td.num { text-align: right; padding-right: 0; }
+.svc-table th.num { text-align: right; padding-right: 0; }
+.table-scroll { overflow-x: auto; }
+.panel .quote { font-size: 0.95rem; color: var(--muted); border-left: 3px solid var(--line); padding-left: 14px; }
+
+/* rules */
+.rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 48px; }
+.rule { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; }
+.rule .chip { margin-top: 3px; }
+.rule p { color: var(--muted); margin-top: 6px; }
+
+/* roadmap */
+.road { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; list-style: none; padding: 0; margin: 0; }
+.road li { padding: 18px 16px 0 0; border-top: 3px solid var(--line); display: grid; gap: 6px; align-content: start; }
+.road li.now { border-image: var(--grad) 1; }
+.road .ph { font: 500 0.72rem/1 var(--mono); letter-spacing: 0.08em; color: var(--muted); }
+.road li.now .ph { color: var(--accent); }
+.road strong { font-family: var(--display); font-size: 1.05rem; line-height: 1.2; }
+.road span { font-size: 0.9rem; color: var(--muted); }
+
+/* waitlist */
+.join { display: grid; grid-template-columns: 1fr 1.1fr; gap: 56px; align-items: start; }
+.join-copy { display: grid; gap: 18px; }
+form { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 28px; display: grid; gap: 16px; }
+.field { display: grid; gap: 6px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+label { font-weight: 600; font-size: 0.92rem; }
+input, select { font: 400 1rem/1.3 var(--body); padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--ink); width: 100%; }
+.err { color: var(--no); font-size: 0.85rem; min-height: 0; }
+.thanks { display: grid; gap: 10px; }
+
+footer { border-top: 1px solid var(--line); padding-block: 32px 48px; color: var(--muted); font-size: 0.88rem; }
+footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+@media (max-width: 920px) {
+  .hero .wrap, .join, .types { grid-template-columns: 1fr; }
+  .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .road { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 24px; }
+  .tablist { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .menu-grid, .rules, .row2 { grid-template-columns: 1fr; }
+  .road { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tablist { grid-template-columns: 1fr; }
+  nav .links { display: none; }
+  section.band { padding-block: 56px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .chip { transition: background-color .25s, color .25s; }
+  .slip.flash { animation: flash .6s ease; }
+  @keyframes flash { 0% { transform: scale(1); } 40% { transform: scale(1.015); } 100% { transform: scale(1); } }
+}
+</style>
+
+<nav>
+  <div class="wrap">
+    <div class="brand"><span class="mark" aria-hidden="true">WM</span>WhatsApp Manager</div>
+    <div class="links">
+      <a href="#how">What it handles</a>
+      <a href="#who">Who it's for</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#join">Join the pilot</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-copy">
+      <span class="eyebrow">For clinics, practices and consultancies</span>
+      <h1>A front desk that answers on WhatsApp.</h1>
+      <p class="lede">Customers message your business number and get a short list of options to tap: book, see prices, reschedule, cancel, or reach a person. Your team sees every request in one place and decides what gets confirmed.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#join">Join the pilot waitlist</a>
+        <a class="btn btn-ghost" href="#how">See what it handles</a>
+      </div>
+      <p class="fine">Now in early development. We're looking for a small group of businesses to shape the first version.</p>
+    </div>
+
+    <div class="stage" aria-label="Example conversation and booking request">
+      <div class="chat">
+        <div class="chat-head">
+          <div class="avatar" aria-hidden="true">BS</div>
+          <div><strong>Brightsmile Dental</strong><span>Automated replies · staff on hand</span></div>
+        </div>
+        <div class="msg out">Hi, can I book a check-up?<span class="t">09:12</span></div>
+        <div class="msg in">Welcome to Brightsmile Dental. How can we help? Choose an option:
+          <ul class="opts" id="opts">
+            <li><button type="button" class="opt" data-opt="book" aria-pressed="true">Book an appointment</button></li>
+            <li><button type="button" class="opt" data-opt="services" aria-pressed="false">Services and prices</button></li>
+            <li><button type="button" class="opt" data-opt="reschedule" aria-pressed="false">Reschedule</button></li>
+            <li><button type="button" class="opt" data-opt="cancel" aria-pressed="false">Cancel</button></li>
+            <li><button type="button" class="opt" data-opt="payment" aria-pressed="false">Payment information</button></li>
+            <li><button type="button" class="opt" data-opt="human" aria-pressed="false">Talk to a person</button></li>
+          </ul><span class="t">09:12</span></div>
+        <div id="chat-tail" style="display:grid;gap:8px" aria-live="polite">
+          <div class="msg out">Book an appointment<span class="t">09:12</span></div>
+          <div class="msg in">Which service? Check-up and clean (45 min) is £65. What day and time suit you?<span class="t">09:13</span></div>
+          <div class="msg out">Thursday after 4pm<span class="t">09:13</span></div>
+          <div class="msg in">Thanks. Your request is with our team. We'll message you once it's confirmed.<span class="t">09:13</span></div>
+        </div>
+        <p class="tap-hint">Tap an option to see how the bot replies.</p>
+      </div>
+
+      <div class="slip" id="slip">
+        <div class="slip-top">
+          <strong>New appointment request</strong>
+          <span class="chip pending" id="slip-chip">PENDING</span>
+        </div>
+        <dl>
+          <dt>Service</dt><dd>Check-up and clean · 45 min · £65.00</dd>
+          <dt>Asked for</dt><dd>Thu 29 Oct, after 16:00</dd>
+          <dt>Customer</dt><dd>+44 7700 900123</dd>
+        </dl>
+        <div class="slip-actions" id="slip-actions">
+          <button type="button" class="confirm" data-act="confirmed" id="btn-confirm">Confirm 16:30</button>
+          <button type="button" data-act="declined" id="btn-decline">Decline</button>
+          <button type="button" data-act="reset" id="btn-reset" hidden>Reset example</button>
+        </div>
+        <p class="slip-note" id="slip-note">Nothing is booked until someone on your team confirms it. Try it.</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="band" id="how">
+  <div class="wrap">
+    <div class="band-head">
+      <span class="eyebrow">What it handles</span>
+      <h2>The six questions your front desk answers all day.</h2>
+      <p class="lede">Every conversation starts from the same short list of options. Customers tap one instead of typing, so they never get lost and your staff never repeat themselves.</p>
+    </div>
+    <div class="menu-grid">
+      <div class="menu-item"><h3>Book an appointment</h3><p>Customers pick a service and a preferred time. The request lands in your dashboard for staff to confirm or decline.</p></div>
+      <div class="menu-item"><h3>Services and prices</h3><p>Your own list of services, durations and prices. Switch a service off and the bot stops offering it.</p></div>
+      <div class="menu-item"><h3>Reschedule</h3><p>Customers ask to move an existing appointment without a phone call. Staff approve the new time.</p></div>
+      <div class="menu-item"><h3>Cancel</h3><p>Cancellations come through in writing, with a record of who asked and when.</p></div>
+      <div class="menu-item"><h3>Payment information</h3><p>Share how and when to pay. Secure payment links are on the roadmap, and a payment only shows as paid once the provider confirms it.</p></div>
+      <div class="menu-item"><h3>Talk to a person</h3><p>The bot steps aside and the chat goes to your team's inbox. It only resumes when a staff member hands it back.</p></div>
+    </div>
+    <div class="keywords">Customers can also type <kbd>MENU</kbd> <kbd>BACK</kbd> <kbd>HELP</kbd> or <kbd>HUMAN</kbd> at any point.</div>
+  </div>
+</section>
+
+<section class="band" id="who">
+  <div class="wrap">
+    <div class="band-head">
+      <span class="eyebrow">Who it's for</span>
+      <h2>Set up for how your business books.</h2>
+      <p class="lede">You add your own services, prices, opening hours and booking rules from a dashboard. No code, no scripts to write.</p>
+    </div>
+    <div class="types">
+      <div class="tablist" role="tablist" aria-label="Business types">
+        <button class="tab" role="tab" id="tab-dental" aria-controls="panel" aria-selected="true" data-type="dental">Dental clinics<small>Check-ups, hygiene, emergencies</small></button>
+        <button class="tab" role="tab" id="tab-health" aria-controls="panel" aria-selected="false" data-type="health">Healthcare clinics<small>Physio, GP, therapy sessions</small></button>
+        <button class="tab" role="tab" id="tab-consult" aria-controls="panel" aria-selected="false" data-type="consult">Consulting firms<small>Tax, accounts, advisory</small></button>
+      </div>
+      <div class="panel" id="panel" role="tabpanel" aria-labelledby="tab-dental">
+        <h3 id="panel-title">Example: a two-chair dental practice</h3>
+        <div class="table-scroll">
+          <table class="svc-table">
+            <thead><tr><th>Service</th><th class="num">Duration</th><th class="num">Price</th></tr></thead>
+            <tbody id="panel-rows"></tbody>
+          </table>
+        </div>
+        <p class="quote" id="panel-quote"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="trust">
+  <div class="wrap">
+    <div class="band-head">
+      <span class="eyebrow">Built to be trusted</span>
+      <h2>It never tells a customer something that isn't true.</h2>
+      <p class="lede">Automated replies are only useful if people can rely on them. These rules are built into the product from the first version.</p>
+    </div>
+    <div class="rules">
+      <div class="rule"><span class="chip pending">PENDING</span><div><h3>Requests aren't bookings</h3><p>A new request stays pending until your team confirms it. The bot never promises a slot it hasn't checked.</p></div></div>
+      <div class="rule"><span class="chip confirmed">PAID</span><div><h3>Paid means paid</h3><p>A payment is only marked paid when the payment provider confirms it, never because a customer says so.</p></div></div>
+      <div class="rule"><span class="chip human">HUMAN</span><div><h3>A person is always one word away</h3><p>Customers can ask for a person from any step. Automation pauses until your staff hand the chat back.</p></div></div>
+      <div class="rule"><span class="chip declined">PRIVATE</span><div><h3>Your data stays yours</h3><p>Each business gets its own workspace. One business can never see another's customers, chats or bookings.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="roadmap">
+  <div class="wrap">
+    <div class="band-head">
+      <span class="eyebrow">Roadmap</span>
+      <h2>Where the product is today.</h2>
+      <p class="lede">We're building in stages and testing each one before the next. Pilot businesses get early access as each stage lands.</p>
+    </div>
+    <ol class="road">
+      <li class="now"><span class="ph">IN PROGRESS</span><strong>Working simulator</strong><span>Menu, services, booking requests, handoff and a staff dashboard you can try.</span></li>
+      <li><span class="ph">NEXT</span><strong>Team accounts</strong><span>Secure sign-in for owners and staff, hosted for you.</span></li>
+      <li><span class="ph">THEN</span><strong>Your WhatsApp number</strong><span>Connect your WhatsApp Business number through the official platform.</span></li>
+      <li><span class="ph">THEN</span><strong>Calendar sync</strong><span>Check real availability before a slot is offered.</span></li>
+      <li><span class="ph">THEN</span><strong>Payments and reminders</strong><span>Payment links and reminders customers have agreed to receive.</span></li>
+      <li><span class="ph">THEN</span><strong>Pilot rollout</strong><span>Security review, backups and support for the first live businesses.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section class="band" id="join">
+  <div class="wrap join">
+    <div class="join-copy">
+      <span class="eyebrow">Pilot waitlist</span>
+      <h2>Help shape the first version.</h2>
+      <p class="lede">We're looking for a handful of clinics and practices who take bookings over WhatsApp today. You'll see the simulator first, tell us what's missing, and get early access when your number can be connected.</p>
+      <p class="fine">No payment details needed. We'll only use your email to contact you about the pilot.</p>
+    </div>
+    <form id="waitlist" novalidate>
+      <div id="form-fields" style="display:grid;gap:16px">
+        <div class="row2">
+          <div class="field"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" maxlength="80" required></div>
+          <div class="field"><label for="f-email">Work email</label><input id="f-email" name="email" type="email" autocomplete="email" maxlength="120" required></div>
+        </div>
+        <div class="field"><label for="f-biz">Business name</label><input id="f-biz" name="business" autocomplete="organization" maxlength="100" required></div>
+        <div class="row2">
+          <div class="field"><label for="f-type">Type of business</label>
+            <select id="f-type" name="type" required>
+              <option value="">Choose one</option>
+              <option>Dental clinic</option>
+              <option>Healthcare clinic</option>
+              <option>Consulting firm</option>
+              <option>Salon or beauty</option>
+              <option>Other service business</option>
+            </select>
+          </div>
+          <div class="field"><label for="f-vol">WhatsApp chats per week</label>
+            <select id="f-vol" name="volume">
+              <option value="">Not sure</option>
+              <option>Under 50</option>
+              <option>50 to 200</option>
+              <option>Over 200</option>
+            </select>
+          </div>
+        </div>
+        <p class="err" id="form-err" role="alert"></p>
+        <button class="btn btn-primary" type="submit" id="f-submit">Join the waitlist</button>
+      </div>
+      <div class="thanks" id="thanks" hidden>
+        <span class="chip confirmed">ON THE LIST</span>
+        <h3 id="thanks-title">Thanks, you're on the list.</h3>
+        <p class="fine">This page is a preview, so your details weren't sent anywhere yet. The form will be connected before the page goes live.</p>
+        <button class="btn btn-ghost" type="button" id="f-again">Add another business</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>WhatsApp Manager · early development preview</span>
+    <span>Not affiliated with WhatsApp or Meta. WhatsApp is a trademark of its owner.</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // Booking slip demo
+  var chip = document.getElementById('slip-chip');
+  var note = document.getElementById('slip-note');
+  var slip = document.getElementById('slip');
+  var bConfirm = document.getElementById('btn-confirm');
+  var bDecline = document.getElementById('btn-decline');
+  var bReset = document.getElementById('btn-reset');
+  function setState(s) {
+    chip.className = 'chip ' + (s === 'reset' ? 'pending' : s);
+    chip.textContent = s === 'confirmed' ? 'CONFIRMED' : s === 'declined' ? 'DECLINED' : 'PENDING';
+    note.textContent = s === 'confirmed'
+      ? 'Confirmed by staff. The customer gets: "You\'re booked for Thu 29 Oct at 16:30."'
+      : s === 'declined'
+      ? 'Declined by staff. The customer is offered another time or a call back.'
+      : 'Nothing is booked until someone on your team confirms it. Try it.';
+    var done = s !== 'reset';
+    bConfirm.hidden = done; bDecline.hidden = done; bReset.hidden = !done;
+    slip.classList.remove('flash'); void slip.offsetWidth; slip.classList.add('flash');
+  }
+  document.getElementById('slip-actions').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (b) setState(b.dataset.act);
+  });
+
+  // Chat options: tap one and the bot's reply replaces the tail
+  var replies = {
+    book: [['out', 'Book an appointment'], ['in', 'Which service? Check-up and clean (45 min) is £65. What day and time suit you?'], ['out', 'Thursday after 4pm'], ['in', "Thanks. Your request is with our team. We'll message you once it's confirmed."]],
+    services: [['out', 'Services and prices'], ['in', 'Here is what we offer:', ['Check-up and clean · 45 min · £65', 'Hygienist appointment · 30 min · £55', 'Emergency appointment · 20 min · £80', 'Whitening consultation · 30 min · Free']], ['in', 'Want to book one? Choose "Book an appointment" above.']],
+    reschedule: [['out', 'Reschedule'], ['in', 'Which appointment would you like to move, and what time would suit you better?'], ['out', 'My check-up on Thursday, could we do Friday morning?'], ['in', "Thanks. We've asked the team for a new time. You'll get a message once it's confirmed."]],
+    cancel: [['out', 'Cancel'], ['in', 'Which appointment would you like to cancel?'], ['out', 'Thursday check-up'], ['in', 'Your cancellation request is with our team. We will confirm it here.']],
+    payment: [['out', 'Payment information'], ['in', 'You can pay at the front desk:', ['Card or cash on the day', 'Online payment links are coming soon']]],
+    human: [['out', 'Talk to a person'], ['in', 'Connecting you to our team. A staff member will reply here shortly, and automated replies are paused until then.']]
+  };
+  var tail = document.getElementById('chat-tail');
+  var optBtns = document.querySelectorAll('.opt');
+  function showReply(key) {
+    tail.innerHTML = '';
+    var mins = 12;
+    replies[key].forEach(function (m) {
+      var d = document.createElement('div'); d.className = 'msg ' + m[0];
+      d.appendChild(document.createTextNode(m[1]));
+      if (m[2]) { var ul = document.createElement('ul'); ul.className = 'bul'; m[2].forEach(function (x) { var li = document.createElement('li'); li.textContent = x; ul.appendChild(li); }); d.appendChild(ul); }
+      var t = document.createElement('span'); t.className = 't'; t.textContent = '09:' + (mins++); d.appendChild(t);
+      tail.appendChild(d);
+    });
+    optBtns.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.opt === key); });
+  }
+  optBtns.forEach(function (b) { b.addEventListener('click', function () { showReply(b.dataset.opt); }); });
+
+  // Business type tabs
+  var data = {
+    dental: {
+      title: 'Example: a two-chair dental practice',
+      rows: [['Check-up and clean', '45 min', '£65.00'], ['Hygienist appointment', '30 min', '£55.00'], ['Emergency appointment', '20 min', '£80.00'], ['Teeth whitening consultation', '30 min', 'Free']],
+      quote: 'Emergency requests can go straight to a person instead of the booking flow.'
+    },
+    health: {
+      title: 'Example: a physiotherapy and wellness clinic',
+      rows: [['Initial assessment', '60 min', '£75.00'], ['Follow-up session', '40 min', '£55.00'], ['Sports massage', '45 min', '£50.00'], ['Video consultation', '30 min', '£40.00']],
+      quote: 'The bot never asks for symptoms or medical details. Anything clinical goes to your staff.'
+    },
+    consult: {
+      title: 'Example: a small tax and accounts firm',
+      rows: [['Self-assessment tax return', '60 min', '£180.00'], ['Bookkeeping review', '45 min', '£95.00'], ['Business setup advice', '30 min', '£60.00'], ['Free 15-minute intro call', '15 min', 'Free']],
+      quote: 'Customers can ask for a call back. The bot gives no tax advice of its own.'
+    }
+  };
+  var tabs = document.querySelectorAll('.tab');
+  function show(type) {
+    var d = data[type];
+    document.getElementById('panel-title').textContent = d.title;
+    var tb = document.getElementById('panel-rows'); tb.innerHTML = '';
+    d.rows.forEach(function (r) {
+      var tr = document.createElement('tr');
+      r.forEach(function (c, i) { var td = document.createElement('td'); td.textContent = c; if (i) td.className = 'num'; tr.appendChild(td); });
+      tb.appendChild(tr);
+    });
+    document.getElementById('panel-quote').textContent = d.quote;
+    tabs.forEach(function (t) { var on = t.dataset.type === type; t.setAttribute('aria-selected', on); if (on) document.getElementById('panel').setAttribute('aria-labelledby', t.id); });
+  }
+  tabs.forEach(function (t) { t.addEventListener('click', function () { show(t.dataset.type); }); });
+  show('dental');
+
+  // Waitlist (preview only: nothing is sent)
+  var form = document.getElementById('waitlist');
+  var err = document.getElementById('form-err');
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = form.name.value.trim(), email = form.email.value.trim(), biz = form.business.value.trim(), type = form.type.value;
+    var missing = [];
+    if (!name) missing.push('your name');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) missing.push('a valid email');
+    if (!biz) missing.push('your business name');
+    if (!type) missing.push('the type of business');
+    if (missing.length) { err.textContent = 'Please add ' + missing.join(', ') + '.'; return; }
+    err.textContent = '';
+    document.getElementById('thanks-title').textContent = 'Thanks, ' + name.split(' ')[0] + '. ' + biz + ' is on the list.';
+    document.getElementById('form-fields').hidden = true;
+    document.getElementById('thanks').hidden = false;
+  });
+  document.getElementById('f-again').addEventListener('click', function () {
+    form.reset();
+    document.getElementById('form-fields').hidden = false;
+    document.getElementById('thanks').hidden = true;
+    form.name.focus();
+  });
+})();
+</script>

@@ -1,0 +1,310 @@
+<title>Tax Leads System Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one wide map up top, then the message's trip as a numbered list, then the build order. */
+:root {
+  --bg: #f6f8f7;
+  --surface: #ffffff;
+  --fg: #17211e;
+  --muted: #5a6763;
+  --line: #c9d3d0;
+  --accent: #0f6e5c;
+  --built: #1f8a4c;
+  --built-bg: #e5f4eb;
+  --change: #a86200;
+  --change-bg: #fbf0dd;
+  --new: #6a4bc4;
+  --new-bg: #efebfb;
+  --ext: #56646a;
+  --ext-bg: #eceff0;
+  --bubble: #dcf3e4;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111816; --surface: #18221f; --fg: #e4ece9; --muted: #9aaba6; --line: #34433f;
+    --accent: #4cc2a6; --built: #5fcf8c; --built-bg: #183325; --change: #f0ae4e; --change-bg: #36291a;
+    --new: #a993f0; --new-bg: #272040; --ext: #a5b2b6; --ext-bg: #242d30; --bubble: #1d3a2c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111816; --surface: #18221f; --fg: #e4ece9; --muted: #9aaba6; --line: #34433f;
+  --accent: #4cc2a6; --built: #5fcf8c; --built-bg: #183325; --change: #f0ae4e; --change-bg: #36291a;
+  --new: #a993f0; --new-bg: #272040; --ext: #a5b2b6; --ext-bg: #242d30; --bubble: #1d3a2c;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1160px; margin: 0 auto; padding-block: 32px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 28px; }
+header { display: grid; gap: 8px; max-width: 68ch; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+h1 { margin: 0; font-size: 30px; line-height: 1.2; text-wrap: balance; }
+h2 { margin: 0 0 12px; font-size: 20px; text-wrap: balance; }
+p { margin: 0; }
+.lede { color: var(--muted); }
+code, .mono { font-family: var(--font-mono); font-size: .9em; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 14px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; }
+.sw { width: 22px; height: 14px; border-radius: 3px; border: 2px solid; }
+.sw.built { background: var(--built-bg); border-color: var(--built); }
+.sw.change { background: var(--change-bg); border-color: var(--change); }
+.sw.new { background: var(--new-bg); border-color: var(--new); border-style: dashed; }
+.sw.ext { background: var(--ext-bg); border-color: var(--ext); }
+
+.map { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
+.map svg { display: block; width: 100%; min-width: 980px; height: auto; }
+.hint { font-size: 13px; color: var(--muted); display: none; }
+@media (max-width: 700px) { .hint { display: block; } }
+
+/* SVG styling, all from tokens */
+svg text { font-family: var(--font-body); fill: var(--fg); }
+svg .t-title { font-size: 16px; font-weight: 600; }
+svg .t-body { font-size: 13px; fill: var(--muted); }
+svg .t-file { font-family: var(--font-mono); font-size: 12px; fill: var(--fg); }
+svg .t-tag { font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+svg .t-group { font-size: 13px; font-weight: 600; letter-spacing: .06em; fill: var(--muted); }
+svg .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+svg .group { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 2 4; }
+svg .built { fill: var(--built-bg); stroke: var(--built); stroke-width: 2; }
+svg .change { fill: var(--change-bg); stroke: var(--change); stroke-width: 2; }
+svg .new { fill: var(--new-bg); stroke: var(--new); stroke-width: 2; stroke-dasharray: 7 5; }
+svg .ext { fill: var(--ext-bg); stroke: var(--ext); stroke-width: 2; }
+svg .tag-built { fill: var(--built); } svg .tag-change { fill: var(--change); }
+svg .tag-new { fill: var(--new); } svg .tag-ext { fill: var(--ext); }
+svg .tag-text { fill: var(--bg); }
+svg .flow { fill: none; stroke: var(--accent); stroke-width: 2.25; }
+svg .flow-back { fill: none; stroke: var(--accent); stroke-width: 2.25; stroke-dasharray: 6 4; }
+svg .arrowhead { fill: var(--accent); }
+svg .step { fill: var(--accent); }
+svg .step-text { fill: var(--bg); font-size: 12px; font-weight: 700; }
+svg .bubble { fill: var(--bubble); stroke: none; }
+svg .phone { fill: none; stroke: var(--fg); stroke-width: 1.5; }
+
+.cols { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; align-items: start; }
+@media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+.cols > * { min-width: 0; }
+ol.trip { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; counter-reset: s; }
+ol.trip li { display: grid; grid-template-columns: 28px 1fr; gap: 12px; counter-increment: s; }
+ol.trip li::before { content: counter(s); width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--bg); font-weight: 700; font-size: 13px; display: grid; place-items: center; margin-top: 1px; }
+ol.trip b { font-weight: 600; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 14px; }
+.build { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.build li { display: grid; gap: 2px; }
+.build .k { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+.note { font-size: 14px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">WhatsApp lead intake for a tax consultant</div>
+    <h1>How the real version fits together</h1>
+    <p class="lede">A client chats on WhatsApp. A small bot server asks the questions and saves the answers. The consultant sees each new lead on a private dashboard. The colours show what you already have in your prototype and what still needs building.</p>
+  </header>
+
+  <div class="legend" aria-label="Legend">
+    <span class="chip"><span class="sw built"></span>Already built in your prototype</span>
+    <span class="chip"><span class="sw change"></span>Built, needs a small change</span>
+    <span class="chip"><span class="sw new"></span>New, still to build</span>
+    <span class="chip"><span class="sw ext"></span>Outside service you sign up for</span>
+  </div>
+
+  <div class="map">
+    <svg viewBox="0 0 1140 600" role="img" aria-labelledby="map-title map-desc">
+      <title id="map-title">System structure diagram</title>
+      <desc id="map-desc">Client on WhatsApp sends a message through Meta's Cloud API to the FastAPI bot server, which checks the answer with the existing question logic, saves to Supabase and replies through Meta. The Streamlit dashboard reads leads from Supabase behind a login, and the consultant uses it.</desc>
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path class="arrowhead" d="M0,0 L10,5 L0,10 z"/>
+        </marker>
+      </defs>
+
+      <!-- Client -->
+      <g>
+        <rect class="box" x="20" y="60" width="170" height="160" rx="10"/>
+        <rect class="phone" x="38" y="78" width="40" height="66" rx="7"/>
+        <rect class="bubble" x="44" y="90" width="26" height="9" rx="3"/>
+        <rect class="bubble" x="48" y="104" width="24" height="9" rx="3"/>
+        <rect class="bubble" x="44" y="118" width="20" height="9" rx="3"/>
+        <text class="t-title" x="88" y="96">Client</text>
+        <text class="t-body" x="88" y="114">on their</text>
+        <text class="t-body" x="88" y="130">own phone</text>
+        <text class="t-body" x="38" y="170">Uses normal</text>
+        <text class="t-body" x="38" y="186">WhatsApp. Nothing</text>
+        <text class="t-body" x="38" y="202">to install.</text>
+      </g>
+
+      <!-- Meta -->
+      <g>
+        <rect class="ext" x="250" y="60" width="170" height="160" rx="10"/>
+        <rect class="tag-ext" x="264" y="72" width="70" height="20" rx="4"/>
+        <text class="t-tag tag-text" x="272" y="86">SIGN UP</text>
+        <text class="t-title" x="264" y="116">Meta WhatsApp</text>
+        <text class="t-title" x="264" y="135">Cloud API</text>
+        <text class="t-body" x="264" y="160">The post office.</text>
+        <text class="t-body" x="264" y="176">Passes messages</text>
+        <text class="t-body" x="264" y="192">to and from your</text>
+        <text class="t-body" x="264" y="208">bot server.</text>
+      </g>
+
+      <!-- Bot server group -->
+      <g>
+        <rect class="group" x="480" y="20" width="350" height="360" rx="12"/>
+        <text class="t-group" x="498" y="44">BOT SERVER  ·  FastAPI, online 24/7</text>
+
+        <rect class="new" x="498" y="60" width="314" height="64" rx="8"/>
+        <rect class="tag-new" x="742" y="70" width="58" height="20" rx="4"/>
+        <text class="t-tag tag-text" x="755" y="84">NEW</text>
+        <text class="t-title" x="512" y="84">Front door</text>
+        <text class="t-body" x="512" y="102">Receives each message, ignores</text>
+        <text class="t-body" x="512" y="117">repeats</text>
+        <text class="t-file" x="566" y="117">main.py</text>
+
+        <rect class="built" x="498" y="140" width="314" height="80" rx="8"/>
+        <rect class="tag-built" x="742" y="150" width="58" height="20" rx="4"/>
+        <text class="t-tag tag-text" x="751" y="164">BUILT</text>
+        <text class="t-title" x="512" y="164">Question logic</text>
+        <text class="t-body" x="512" y="182">Checks answers, picks the next question</text>
+        <text class="t-file" x="512" y="199">services.py · validation.py</text>
+        <text class="t-file" x="512" y="214">services.json (menu, checklists)</text>
+
+        <rect class="change" x="498" y="236" width="314" height="64" rx="8"/>
+        <rect class="tag-change" x="722" y="246" width="78" height="20" rx="4"/>
+        <text class="t-tag tag-text" x="731" y="260">CHANGE</text>
+        <text class="t-title" x="512" y="260">Saving</text>
+        <text class="t-body" x="512" y="278">Writes to Supabase, not a file</text>
+        <text class="t-file" x="512" y="293">lead_store.py</text>
+
+        <rect class="new" x="498" y="316" width="314" height="52" rx="8"/>
+        <rect class="tag-new" x="742" y="326" width="58" height="20" rx="4"/>
+        <text class="t-tag tag-text" x="755" y="340">NEW</text>
+        <text class="t-title" x="512" y="339">Reply sender</text>
+        <text class="t-file" x="512" y="357">whatsapp_client.py</text>
+      </g>
+
+      <!-- Supabase -->
+      <g>
+        <path class="ext" d="M900,78 a110,18 0 0,1 220,0 v185 a110,18 0 0,1 -220,0 z"/>
+        <path class="ext" d="M900,78 a110,18 0 0,0 220,0" />
+        <rect class="tag-ext" x="918" y="106" width="70" height="20" rx="4"/>
+        <text class="t-tag tag-text" x="926" y="120">SIGN UP</text>
+        <text class="t-title" x="918" y="150">Supabase database</text>
+        <text class="t-body" x="918" y="170">The filing cabinet. Keeps:</text>
+        <text class="t-file" x="918" y="190">leads</text>
+        <text class="t-file" x="918" y="207">conversations (who is on</text>
+        <text class="t-file" x="918" y="222">  which question)</text>
+        <text class="t-file" x="918" y="239">message log</text>
+      </g>
+
+      <!-- Dashboard -->
+      <g>
+        <rect class="change" x="900" y="380" width="220" height="150" rx="10"/>
+        <rect class="tag-change" x="1026" y="392" width="78" height="20" rx="4"/>
+        <text class="t-tag tag-text" x="1035" y="406">CHANGE</text>
+        <text class="t-title" x="916" y="406">Dashboard</text>
+        <text class="t-body" x="916" y="424">Streamlit</text>
+        <text class="t-body" x="916" y="448">Your "Saved leads" page.</text>
+        <text class="t-body" x="916" y="466">Reads from Supabase and</text>
+        <text class="t-body" x="916" y="484">gets a login (new).</text>
+        <text class="t-file" x="916" y="512">app.py</text>
+        <!-- lock -->
+        <rect x="1078" y="494" width="22" height="18" rx="3" class="tag-change"/>
+        <path d="M1083,494 v-5 a6,6 0 0,1 12,0 v5" fill="none" stroke="var(--change)" stroke-width="2"/>
+      </g>
+
+      <!-- Consultant -->
+      <g>
+        <rect class="box" x="600" y="430" width="200" height="100" rx="10"/>
+        <circle cx="630" cy="462" r="10" class="phone"/>
+        <path class="phone" d="M614,494 a16,14 0 0,1 32,0"/>
+        <text class="t-title" x="656" y="462">Tax consultant</text>
+        <text class="t-body" x="656" y="480">Logs in, sees new</text>
+        <text class="t-body" x="656" y="496">leads, calls back</text>
+        <text class="t-body" x="656" y="512">and updates status</text>
+      </g>
+
+      <!-- Today's prototype inset -->
+      <g>
+        <rect class="box" x="20" y="300" width="420" height="230" rx="10"/>
+        <text class="t-group" x="38" y="326">YOUR PROTOTYPE TODAY (on your computer)</text>
+        <rect class="built" x="38" y="342" width="170" height="54" rx="6"/>
+        <text class="t-title" x="50" y="364">"New enquiry" page</text>
+        <text class="t-file" x="50" y="384">app.py</text>
+        <rect class="built" x="252" y="342" width="170" height="54" rx="6"/>
+        <text class="t-title" x="264" y="364">Leads file</text>
+        <text class="t-file" x="264" y="384">data/leads.json</text>
+        <path class="flow" d="M208,369 H248" marker-end="url(#ah)"/>
+        <text class="t-body" x="38" y="424">In the real version, WhatsApp replaces the</text>
+        <text class="t-body" x="38" y="442">"New enquiry" screens, and Supabase replaces</text>
+        <text class="t-body" x="38" y="460">the leads file. The question logic and the</text>
+        <text class="t-body" x="38" y="478">"Saved leads" page carry over.</text>
+        <text class="t-body" x="38" y="508">Your tests in</text>
+        <text class="t-file" x="124" y="508">tests/</text>
+        <text class="t-body" x="174" y="508">come along too.</text>
+      </g>
+
+      <!-- Flows -->
+      <!-- 1 client -> meta -->
+      <path class="flow" d="M190,110 H246" marker-end="url(#ah)"/>
+      <circle class="step" cx="218" cy="96" r="11"/><text class="step-text" x="214" y="100">1</text>
+      <!-- 2 meta -> front door -->
+      <path class="flow" d="M420,92 H494" marker-end="url(#ah)"/>
+      <circle class="step" cx="452" cy="78" r="11"/><text class="step-text" x="448" y="82">2</text>
+      <!-- 3 supabase -> front door: look up conversation -->
+      <path class="flow-back" d="M900,100 H816" marker-end="url(#ah)"/>
+      <circle class="step" cx="858" cy="86" r="11"/><text class="step-text" x="854" y="90">3</text>
+      <!-- 4 front door -> question logic -->
+      <path class="flow" d="M655,124 V136" marker-end="url(#ah)"/>
+      <circle class="step" cx="680" cy="131" r="11"/><text class="step-text" x="676" y="135">4</text>
+      <!-- question logic -> saving -->
+      <path class="flow" d="M655,220 V232" marker-end="url(#ah)"/>
+      <!-- 5 saving -> supabase -->
+      <path class="flow" d="M812,268 H860 V210 H896" marker-end="url(#ah)"/>
+      <circle class="step" cx="836" cy="250" r="11"/><text class="step-text" x="832" y="254">5</text>
+      <!-- saving -> reply sender -->
+      <path class="flow" d="M655,300 V312" marker-end="url(#ah)"/>
+      <!-- 6 reply sender -> meta -> client -->
+      <path class="flow" d="M498,342 H460 V190 H424" marker-end="url(#ah)"/>
+      <circle class="step" cx="460" cy="266" r="11"/><text class="step-text" x="456" y="270">6</text>
+      <path class="flow" d="M250,180 H194" marker-end="url(#ah)"/>
+      <!-- 7 supabase -> dashboard -->
+      <path class="flow" d="M1010,284 V376" marker-end="url(#ah)"/>
+      <circle class="step" cx="1032" cy="330" r="11"/><text class="step-text" x="1028" y="334">7</text>
+      <!-- 8 dashboard -> consultant -->
+      <path class="flow" d="M900,480 H804" marker-end="url(#ah)"/>
+      <circle class="step" cx="852" cy="466" r="11"/><text class="step-text" x="848" y="470">8</text>
+
+      <text class="t-body" x="500" y="580">Solid arrows: the message moving forward.  Dashed arrow: the bot looking something up.</text>
+    </svg>
+  </div>
+  <p class="hint">Swipe sideways to see the whole map.</p>
+
+  <div class="cols">
+    <section>
+      <h2>One message, start to finish</h2>
+      <ol class="trip">
+        <li><span>The <b>client</b> types "Hi", or picks "Personal tax return", in WhatsApp.</span></li>
+        <li><span><b>Meta</b> forwards that message to your <b>bot server's front door</b>. Meta sometimes sends the same message twice, so the front door skips any it has already handled.</span></li>
+        <li><span>The bot <b>looks up this client's conversation</b> in Supabase to see which question they are on. Keeping this in the database means a server restart loses nothing.</span></li>
+        <li><span>The <b>question logic</b> (the part you already built) checks the answer. A bad email keeps them on the same question with a short explanation. A good answer moves them to the next question.</span></li>
+        <li><span>The bot <b>saves</b> the answer and the new position. After the last question it saves a complete <b>lead</b>.</span></li>
+        <li><span>The <b>reply sender</b> sends the next question, or the thank-you and document checklist, back through Meta to the client's WhatsApp.</span></li>
+        <li><span>The <b>dashboard</b> reads the leads from Supabase.</span></li>
+        <li><span>The <b>consultant</b> logs in, sees who wants a call back, and marks each lead as contacted.</span></li>
+      </ol>
+    </section>
+
+    <aside class="panel">
+      <h2>Build order</h2>
+      <ol class="build">
+        <li><span class="k">Step 1</span><span>Change <code>lead_store.py</code> to save to Supabase instead of the file.</span></li>
+        <li><span class="k">Step 2</span><span>Add the bot server (front door and reply sender) and test it with Meta's free test number.</span></li>
+        <li><span class="k">Step 3</span><span>Point the dashboard at Supabase and add a login.</span></li>
+        <li><span class="k">Step 4</span><span>Put it online and try it with a few friendly clients.</span></li>
+      </ol>
+      <p class="note">Each step works on its own before the next one starts. Secret keys for Meta and Supabase live in settings on the server, never in the code.</p>
+    </aside>
+  </div>
+</div>
