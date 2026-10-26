@@ -1,0 +1,9 @@
+[project]
+name = "whatsapp-manager"
+version = "0.1.0"
+description = "Phase 1 local simulator for a configurable WhatsApp manager"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
