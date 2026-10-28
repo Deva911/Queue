@@ -7,6 +7,7 @@ import pytest
 from whatsapp_manager import repositories as repo
 from whatsapp_manager.models import AppointmentStatus, ConversationStatus, State, ValidationError
 from whatsapp_manager.services import appointment_service as appts
+from whatsapp_manager.services import business_service
 from whatsapp_manager.services import conversation_service as chat
 from whatsapp_manager.services.business_service import BusinessInput, get_business, set_hours, update_business
 
@@ -187,3 +188,30 @@ def test_rescheduling_is_not_blocked_by_the_request_being_moved(conn, clinic, sa
     mine = [s.start_at for s in appts.find_open_slots(conn, bid, clinic["filling"], NOW, exclude_id=request["id"])]
     assert "2026-10-26T10:00:00+05:30" not in others
     assert "2026-10-26T10:00:00+05:30" in mine
+
+
+def test_service_number_still_means_the_service_that_was_shown(conn, clinic, say):
+    # Customer sees "1. Check-up, 2. Filling"; the owner hides Check-up before they answer.
+    bid = clinic["id"]
+    say(bid, "hi")
+    say(bid, "1")
+    business_service.set_service_active(conn, bid, clinic["checkup"], False)
+    reply = say(bid, "1")
+    assert "Filling" not in reply.reply.split("\n")[0]
+    assert "no longer available" in reply.reply
+    assert reply.state == State.BOOKING_SERVICE
+    assert "1. Filling" in reply.reply  # the refreshed list
+
+
+def test_cancel_number_still_means_the_request_that_was_shown(conn, clinic, say):
+    # Customer sees two requests; staff cancel the first before the customer picks "1".
+    bid = clinic["id"]
+    book(say, bid, slot="1")
+    book(say, bid, slot="2")
+    say(bid, "4")
+    first, second = sorted(appts.list_requests(conn, bid), key=lambda a: a["requested_start_at"])
+    appts.staff_set_status(conn, bid, first["id"], AppointmentStatus.CANCELLED)
+    reply = say(bid, "1")
+    assert "no longer available" in reply.reply
+    assert reply.state == State.CANCEL_SELECT
+    assert repo.get_appointment(conn, bid, second["id"])["status"] == AppointmentStatus.PENDING
