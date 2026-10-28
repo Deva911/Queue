@@ -11,6 +11,11 @@ class BusinessStatus(StrEnum):
     INACTIVE = "INACTIVE"
 
 
+class Role(StrEnum):
+    OWNER = "OWNER"
+    STAFF = "STAFF"
+
+
 class LeadStatus(StrEnum):
     NEW = "NEW"
     IN_PROGRESS = "IN_PROGRESS"
@@ -81,6 +86,10 @@ MAX_DESCRIPTION_LENGTH = 1000
 
 class ValidationError(ValueError):
     """Bad input from an owner, staff member or customer. The message is safe to show."""
+
+
+class AuthError(ValidationError):
+    """Sign-in failed, or the signed-in person isn't allowed to do this. The message is safe to show."""
 
 
 class NotFoundError(LookupError):

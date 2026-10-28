@@ -332,3 +332,62 @@ def list_audit(conn: sqlite3.Connection, business_id: str, limit: int = 200) -> 
         "SELECT * FROM audit_events WHERE business_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?",
         (business_id, limit),
     ))
+
+
+# ---------- users and memberships (not business-owned: access is decided from these) ----------
+
+def insert_user(conn: sqlite3.Connection, *, email: str, display_name: str, password_hash: str,
+                is_platform_admin: bool) -> str:
+    user_id, now = new_id(), utc_now()
+    conn.execute(
+        "INSERT INTO users (id, email, display_name, password_hash, is_platform_admin, created_at, updated_at)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (user_id, email, display_name, password_hash, int(is_platform_admin), now, now),
+    )
+    return user_id
+
+
+def get_user(conn: sqlite3.Connection, user_id: str) -> Row | None:
+    return _one(conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)))
+
+
+def get_user_by_email(conn: sqlite3.Connection, email: str) -> Row | None:
+    return _one(conn.execute("SELECT * FROM users WHERE email = ?", (email,)))
+
+
+def count_users(conn: sqlite3.Connection) -> int:
+    return conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+
+
+def update_user(conn: sqlite3.Connection, user_id: str, fields: dict[str, Any]) -> int:
+    allowed = {"display_name", "password_hash", "status", "failed_logins", "locked_until"}
+    if not set(fields) <= allowed:
+        raise ValueError(f"Can't update user fields {set(fields) - allowed}")
+    fields = {**fields, "updated_at": utc_now()}
+    cols = ", ".join(f"{k} = ?" for k in fields)
+    return conn.execute(f"UPDATE users SET {cols} WHERE id = ?", (*fields.values(), user_id)).rowcount
+
+
+def list_memberships_for_user(conn: sqlite3.Connection, user_id: str) -> list[Row]:
+    return _all(conn.execute("SELECT * FROM memberships WHERE user_id = ?", (user_id,)))
+
+
+def list_members(conn: sqlite3.Connection, business_id: str) -> list[Row]:
+    return _all(conn.execute(
+        "SELECT m.role, m.created_at AS member_since, u.id AS user_id, u.email, u.display_name, u.status"
+        " FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.business_id = ? ORDER BY m.role, u.email",
+        (business_id,),
+    ))
+
+
+def upsert_membership(conn: sqlite3.Connection, user_id: str, business_id: str, role: str) -> None:
+    conn.execute(
+        "INSERT INTO memberships (user_id, business_id, role, created_at) VALUES (?, ?, ?, ?)"
+        " ON CONFLICT (user_id, business_id) DO UPDATE SET role = excluded.role",
+        (user_id, business_id, role, utc_now()),
+    )
+
+
+def delete_membership(conn: sqlite3.Connection, user_id: str, business_id: str) -> int:
+    return conn.execute("DELETE FROM memberships WHERE user_id = ? AND business_id = ?",
+                        (user_id, business_id)).rowcount

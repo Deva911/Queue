@@ -17,10 +17,11 @@ from whatsapp_manager.services.business_service import (  # noqa: E402
     set_service_active,
     update_service,
 )
-from whatsapp_manager.ui import flash, page_setup, select_business, show_error  # noqa: E402
+from whatsapp_manager.services.auth_service import Permission  # noqa: E402
+from whatsapp_manager.ui import actor, flash, page_setup, select_business, show_error  # noqa: E402
 
 conn = page_setup("Services")
-business = select_business(conn)
+business = select_business(conn, Permission.EDIT_SERVICES)
 if not business:
     st.stop()
 bid = business["id"]
@@ -50,7 +51,7 @@ st.subheader("Add a service")
 new = service_form("add_service")
 if new:
     try:
-        add_service(conn, bid, new)
+        add_service(conn, bid, new, actor=actor(conn).label)
     except Exception as exc:  # noqa: BLE001
         show_error(exc)
     else:
@@ -67,7 +68,7 @@ for s in services:
         edited = service_form(f"edit_{s['id']}", s)
         if edited:
             try:
-                update_service(conn, bid, s["id"], edited)
+                update_service(conn, bid, s["id"], edited, actor=actor(conn).label)
             except Exception as exc:  # noqa: BLE001
                 show_error(exc)
             else:
@@ -75,6 +76,6 @@ for s in services:
                 st.rerun()
         toggle = "Deactivate" if s["is_active"] else "Activate"
         if st.button(toggle, key=f"toggle_{s['id']}"):
-            set_service_active(conn, bid, s["id"], not s["is_active"])
+            set_service_active(conn, bid, s["id"], not s["is_active"], actor=actor(conn).label)
             flash(f"{s['name']} is now {'inactive' if s['is_active'] else 'active'}.")
             st.rerun()
