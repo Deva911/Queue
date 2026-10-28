@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from .. import repositories as repo
 from ..models import (
@@ -90,6 +90,17 @@ def _get_or_start(conn: sqlite3.Connection, business_id: str, customer_key: str)
     return customer, conversation
 
 
+def _record_lead(conn: sqlite3.Connection, business_id: str, customer_id: str, service_id: str | None,
+                 name: str | None, enquiry: str) -> None:
+    """One open lead per customer and service: a repeat enquiry refreshes it instead of adding a row."""
+    existing = repo.find_open_lead(conn, business_id, customer_id, service_id)
+    if existing:
+        repo.update_lead(conn, business_id, existing["id"], {"enquiry": enquiry, "name": name or existing["name"]})
+    else:
+        repo.insert_lead(conn, business_id, customer_id, service_id=service_id, name=name, enquiry=enquiry,
+                         status=LeadStatus.NEW)
+
+
 def _apply(conn: sqlite3.Connection, business_id: str, customer: dict, conversation: dict,
            action: bot.Action, now: datetime) -> None:
     if isinstance(action, bot.CreateAppointment):
@@ -100,14 +111,12 @@ def _apply(conn: sqlite3.Connection, business_id: str, customer: dict, conversat
     elif isinstance(action, bot.CancelAppointment):
         appointment_service.customer_cancel(conn, business_id, customer["id"], action.appointment_id)
     elif isinstance(action, bot.RecordLead):
-        repo.insert_lead(conn, business_id, customer["id"], service_id=action.service_id,
-                         name=repo.get_customer(conn, business_id, customer["id"])["display_name"],
-                         enquiry=action.enquiry, status=LeadStatus.NEW)
+        _record_lead(conn, business_id, customer["id"], action.service_id,
+                     repo.get_customer(conn, business_id, customer["id"])["display_name"], action.enquiry)
     elif isinstance(action, bot.RequestHandoff):
         repo.update_conversation(conn, business_id, conversation["id"],
                                  {"status": ConversationStatus.PENDING_HANDOFF})
-        repo.insert_lead(conn, business_id, customer["id"], service_id=None, name=customer["display_name"],
-                         enquiry="Asked to talk to a person", status=LeadStatus.NEW)
+        _record_lead(conn, business_id, customer["id"], None, customer["display_name"], "Asked to talk to a person")
         repo.insert_audit(conn, business_id, actor="customer", event_type="HANDOFF_REQUESTED",
                           entity_type="conversation", entity_id=conversation["id"],
                           details={"reason": action.reason})
@@ -270,3 +279,20 @@ def set_lead_status(conn: sqlite3.Connection, business_id: str, lead_id: str, st
         repo.update_lead(conn, business_id, lead_id, {"status": status})
         repo.insert_audit(conn, business_id, actor=actor, event_type="LEAD_STATUS_CHANGED", entity_type="lead",
                           entity_id=lead_id, details={"from": lead["status"], "to": status})
+
+
+DEFAULT_MESSAGE_RETENTION_DAYS = 90
+
+
+def delete_old_messages(conn: sqlite3.Connection, business_id: str,
+                        older_than_days: int = DEFAULT_MESSAGE_RETENTION_DAYS, now: datetime | None = None,
+                        actor: str = STAFF) -> int:
+    """Retention rule (SRS NFR-003): remove chat messages older than the given number of days."""
+    if older_than_days < 1:
+        raise ValidationError("Keep messages for at least 1 day.")
+    cutoff = (_now(now) - timedelta(days=older_than_days)).isoformat(timespec="seconds")
+    with conn:
+        deleted = repo.delete_messages_before(conn, business_id, cutoff)
+        repo.insert_audit(conn, business_id, actor=actor, event_type="MESSAGES_DELETED", entity_type="message",
+                          entity_id=None, details={"older_than_days": older_than_days, "deleted": deleted})
+    return deleted

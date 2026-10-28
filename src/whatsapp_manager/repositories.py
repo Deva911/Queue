@@ -234,6 +234,21 @@ def insert_lead(conn: sqlite3.Connection, business_id: str, customer_id: str, *,
     return lead_id
 
 
+def find_open_lead(conn: sqlite3.Connection, business_id: str, customer_id: str,
+                   service_id: str | None) -> Row | None:
+    """The customer's newest lead for this service (or for no service) that staff haven't closed."""
+    return _one(conn.execute(
+        "SELECT * FROM leads WHERE business_id = ? AND customer_id = ? AND service_id IS ?"
+        " AND status IN ('NEW', 'IN_PROGRESS') ORDER BY created_at DESC, rowid DESC LIMIT 1",
+        (business_id, customer_id, service_id),
+    ))
+
+
+def delete_messages_before(conn: sqlite3.Connection, business_id: str, cutoff: str) -> int:
+    return conn.execute("DELETE FROM messages WHERE business_id = ? AND created_at < ?",
+                        (business_id, cutoff)).rowcount
+
+
 def get_lead(conn: sqlite3.Connection, business_id: str, lead_id: str) -> Row | None:
     return _one(conn.execute("SELECT * FROM leads WHERE business_id = ? AND id = ?", (business_id, lead_id)))
 

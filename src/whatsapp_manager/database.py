@@ -134,15 +134,23 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(business_id, co
 CREATE INDEX IF NOT EXISTS idx_leads_business ON leads(business_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_business ON appointment_requests(business_id, status);
 CREATE INDEX IF NOT EXISTS idx_audit_business ON audit_events(business_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(business_id, created_at);
 """
+
+# Bump when the schema changes, and add the upgrade step in connect(), so existing databases
+# are upgraded in place instead of being thrown away.
+SCHEMA_VERSION = 2
 
 
 def connect(path: str | Path) -> sqlite3.Connection:
     """Open the database (creating the file and tables if needed)."""
     if str(path) != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path))
+    conn = sqlite3.connect(str(path), timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    if str(path) != ":memory:":
+        conn.execute("PRAGMA journal_mode = WAL")  # readers don't block the writer (several browser tabs)
     conn.executescript(SCHEMA)
+    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     return conn
