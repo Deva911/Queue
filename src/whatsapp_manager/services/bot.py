@@ -158,6 +158,7 @@ def render(state: State, ctx: BotContext, data: dict, intro: str | None = None) 
 
     if state == State.BOOKING_SERVICE:
         options = [(str(i), s.name) for i, s in enumerate(ctx.services, 1)]
+        data = {**data, "offered": [s.id for s in ctx.services]}
         return BotReply(f"{prefix}Which service would you like to book? Reply with a number:\n{_numbered(options)}",
                         state, data, options + [("BACK", "Back")])
 
@@ -176,6 +177,7 @@ def render(state: State, ctx: BotContext, data: dict, intro: str | None = None) 
         verb = "reschedule" if state == State.RESCHEDULE_SELECT else "cancel"
         options = [(str(i), f"{a.service_name}, {a.start_label} ({a.status.lower()})")
                    for i, a in enumerate(ctx.appointments, 1)]
+        data = {**data, "offered": [a.id for a in ctx.appointments]}
         return BotReply(f"{prefix}Which request would you like to {verb}? Reply with a number:\n{_numbered(options)}",
                         state, data, options + [("BACK", "Back")])
 
@@ -206,6 +208,24 @@ def _choice(text: str, count: int) -> int | None:
         if 1 <= n <= count:
             return n
     return None
+
+
+def _pick(raw: str, data: dict, items: list):
+    """The item the customer chose, by its number in the list they were shown.
+
+    Returns (item, None), (None, reply-to-send) or (None, None) for input that isn't a valid number.
+    The list can change between messages (a service is hidden, a request is cancelled), so the
+    number is resolved against the ids that were shown, never against today's list.
+    """
+    offered = data.get("offered")
+    if offered is None:  # conversation started before "offered" was saved
+        n = _choice(raw, len(items))
+        return (items[n - 1], None) if n else (None, None)
+    n = _choice(raw, len(offered))
+    if n is None:
+        return None, None
+    item = next((i for i in items if i.id == offered[n - 1]), None)
+    return item, None if item else "Sorry, that option is no longer available. Here's the updated list."
 
 
 def _invalid(state: State, ctx: BotContext, data: dict) -> BotReply:
@@ -305,10 +325,12 @@ def handle(ctx: BotContext, state: State | str, data: dict, text: str) -> BotRep
         return _invalid(state, ctx, data)
 
     if state == State.BOOKING_SERVICE:
-        n = _choice(raw, len(ctx.services))
-        if n is None:
+        service, gone = _pick(raw, data, ctx.services)
+        if gone:
+            return render(state, ctx, data, intro=gone)
+        if service is None:
             return _invalid(state, ctx, data)
-        return _offer_times(ctx, data, ctx.services[n - 1], State.BOOKING_TIME, State.BOOKING_SERVICE)
+        return _offer_times(ctx, data, service, State.BOOKING_TIME, State.BOOKING_SERVICE)
 
     if state == State.BOOKING_TIME:
         slots = data.get("slots", [])
@@ -330,10 +352,11 @@ def handle(ctx: BotContext, state: State | str, data: dict, text: str) -> BotRep
         return _finish_booking(ctx, data, name)
 
     if state in (State.RESCHEDULE_SELECT, State.CANCEL_SELECT):
-        n = _choice(raw, len(ctx.appointments))
-        if n is None:
+        appt, gone = _pick(raw, data, ctx.appointments)
+        if gone:
+            return render(state, ctx, data, intro=gone)
+        if appt is None:
             return _invalid(state, ctx, data)
-        appt = ctx.appointments[n - 1]
         if state == State.CANCEL_SELECT:
             return render(State.CANCEL_CONFIRM, ctx,
                           _keep(data, appointment_id=appt.id,

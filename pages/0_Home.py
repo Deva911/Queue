@@ -9,10 +9,12 @@ import streamlit as st  # noqa: E402
 
 from whatsapp_manager import repositories as repo  # noqa: E402
 from whatsapp_manager.models import AppointmentStatus, ConversationStatus  # noqa: E402
+from whatsapp_manager.services import auth_service as auth  # noqa: E402
 from whatsapp_manager.services.business_service import BusinessInput, create_business  # noqa: E402
-from whatsapp_manager.ui import flash, page_setup, select_business, show_error, switch_business  # noqa: E402
+from whatsapp_manager.ui import actor, flash, page_setup, select_business, show_error, switch_business  # noqa: E402
 
 conn = page_setup("WhatsApp Manager")
+me = actor(conn)
 business = select_business(conn)
 
 st.write("Set up a business, try the customer chat, and handle requests as staff. "
@@ -21,7 +23,8 @@ st.markdown(
     "1. **Business Profile**: name, contact details, time zone, opening hours, payment info\n"
     "2. **Services**: what customers can book, with prices and durations\n"
     "3. **Chat Simulator**: chat as a customer would on WhatsApp\n"
-    "4. **Leads and Appointments**: confirm or decline requests, reply to handed-over chats, audit log, CSV export"
+    "4. **Leads and Appointments**: confirm or decline requests, reply to handed-over chats, audit log, CSV export\n"
+    "5. **Team**: who can sign in to this business, as owner or staff"
 )
 
 if business:
@@ -35,21 +38,38 @@ if business:
     c3.metric("Chats waiting for a person", len(handoffs))
     c4.metric("Leads", len(repo.list_leads(conn, bid)))
 
+if me.is_platform_admin:
+    st.divider()
+    st.subheader("Create a new business (platform admin)")
+    with st.form("signup", clear_on_submit=True):
+        name = st.text_input("Business name *")
+        category = st.selectbox("Category", ["Clinic", "Salon", "Consulting", "Fitness", "Tutoring", "Other"])
+        email = st.text_input("Contact email")
+        tz = st.text_input("Time zone *", value="Asia/Kolkata", help="For example Asia/Kolkata or America/Toronto")
+        submitted = st.form_submit_button("Create business")
+    if submitted:
+        try:
+            auth.require_platform_admin(actor(conn))  # checked again on submit, not just by hiding the form
+            new_id = create_business(conn, BusinessInput(name=name, category=category, contact_email=email,
+                                                         timezone=tz), actor=me.label)
+        except Exception as exc:  # noqa: BLE001 - shown to the user without a stack trace
+            show_error(exc)
+        else:
+            switch_business(new_id)
+            flash(f"Created {name.strip()}. Default hours are Mon to Fri, 09:00 to 17:00. "
+                  "Next, add its owner on the Team page.")
+            st.rerun()
+
 st.divider()
-st.subheader("Sign up a new business")
-with st.form("signup", clear_on_submit=True):
-    name = st.text_input("Business name *")
-    category = st.selectbox("Category", ["Clinic", "Salon", "Consulting", "Fitness", "Tutoring", "Other"])
-    email = st.text_input("Contact email")
-    tz = st.text_input("Time zone *", value="Asia/Kolkata", help="For example Asia/Kolkata or America/Toronto")
-    submitted = st.form_submit_button("Create business")
-if submitted:
-    try:
-        new_id = create_business(conn, BusinessInput(name=name, category=category, contact_email=email, timezone=tz))
-    except Exception as exc:  # noqa: BLE001 - shown to the user without a stack trace
-        show_error(exc)
-    else:
-        switch_business(new_id)
-        flash(f"Created {name.strip()}. Default hours are Mon to Fri, 09:00 to 17:00. "
-                   "Add services next on the Services page.")
-        st.rerun()
+with st.expander("My account: change password"):
+    with st.form("change_password", clear_on_submit=True):
+        current = st.text_input("Current password", type="password")
+        new = st.text_input(f"New password (at least {auth.MIN_PASSWORD_LENGTH} characters)", type="password")
+        if st.form_submit_button("Change password"):
+            try:
+                auth.change_password(conn, me, current, new)
+            except Exception as exc:  # noqa: BLE001
+                show_error(exc)
+            else:
+                flash("Password changed.")
+                st.rerun()

@@ -128,21 +128,53 @@ CREATE TABLE IF NOT EXISTS audit_events (
     created_at   TEXT NOT NULL
 );
 
+-- People who sign in to the dashboard. Customers never sign in; they only chat.
+CREATE TABLE IF NOT EXISTS users (
+    id                TEXT PRIMARY KEY,
+    email             TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    display_name      TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+    password_hash     TEXT NOT NULL,
+    is_platform_admin INTEGER NOT NULL DEFAULT 0 CHECK (is_platform_admin IN (0, 1)),
+    status            TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'DISABLED')),
+    failed_logins     INTEGER NOT NULL DEFAULT 0,
+    locked_until      TEXT,
+    created_at        TEXT NOT NULL,
+    updated_at        TEXT NOT NULL
+);
+
+-- Which businesses a user may work in, and as what. This is the only source of access.
+CREATE TABLE IF NOT EXISTS memberships (
+    user_id     TEXT NOT NULL REFERENCES users(id),
+    business_id TEXT NOT NULL REFERENCES businesses(id),
+    role        TEXT NOT NULL CHECK (role IN ('OWNER', 'STAFF')),
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY (user_id, business_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_memberships_business ON memberships(business_id);
 CREATE INDEX IF NOT EXISTS idx_services_business ON services(business_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_business ON conversations(business_id, status);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(business_id, conversation_id);
 CREATE INDEX IF NOT EXISTS idx_leads_business ON leads(business_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_business ON appointment_requests(business_id, status);
 CREATE INDEX IF NOT EXISTS idx_audit_business ON audit_events(business_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(business_id, created_at);
 """
+
+# Bump when the schema changes, and add the upgrade step in connect(), so existing databases
+# are upgraded in place instead of being thrown away.
+SCHEMA_VERSION = 2
 
 
 def connect(path: str | Path) -> sqlite3.Connection:
     """Open the database (creating the file and tables if needed)."""
     if str(path) != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path))
+    conn = sqlite3.connect(str(path), timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    if str(path) != ":memory:":
+        conn.execute("PRAGMA journal_mode = WAL")  # readers don't block the writer (several browser tabs)
     conn.executescript(SCHEMA)
+    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     return conn

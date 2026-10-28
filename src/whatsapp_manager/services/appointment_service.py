@@ -120,6 +120,8 @@ def create_request(conn: sqlite3.Connection, business_id: str, customer_id: str,
         original = repo.get_appointment(conn, business_id, reschedule_of)
         if original is None or original["customer_id"] != customer_id:
             raise ValidationError("That appointment request was not found.")
+        if original["status"] not in OPEN_APPOINTMENT_STATUSES:
+            raise ValidationError("That appointment request is already closed.")
     if notes and len(notes) > MAX_TEXT_FIELD_LENGTH:
         raise ValidationError(f"Notes must be {MAX_TEXT_FIELD_LENGTH} characters or fewer.")
     _ensure_slot_still_open(conn, business_id, service, start_at, now, exclude_id=reschedule_of)

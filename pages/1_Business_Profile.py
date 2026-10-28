@@ -15,13 +15,16 @@ from whatsapp_manager.services.business_service import (  # noqa: E402
     update_business,
     validate_hours,
 )
-from whatsapp_manager.ui import flash, page_setup, select_business, show_error  # noqa: E402
+from whatsapp_manager.services import conversation_service as chat  # noqa: E402
+from whatsapp_manager.services.auth_service import Permission  # noqa: E402
+from whatsapp_manager.ui import actor, can, flash, page_setup, select_business, show_error  # noqa: E402
 
 conn = page_setup("Business Profile")
-business = select_business(conn)
+business = select_business(conn, Permission.EDIT_BUSINESS)
 if not business:
     st.stop()
 bid = business["id"]
+me = actor(conn).label
 statuses = [s.value for s in BusinessStatus]
 
 st.subheader("Profile")
@@ -39,7 +42,8 @@ with st.form("profile"):
                           help="When inactive, the assistant tells customers it isn't taking messages.")
     if st.form_submit_button("Save profile"):
         try:
-            update_business(conn, bid, BusinessInput(name, category, address, email, tz, logo, payment, status))
+            update_business(conn, bid, BusinessInput(name, category, address, email, tz, logo, payment, status),
+                            actor=me)
         except Exception as exc:  # noqa: BLE001 - shown without a stack trace
             show_error(exc)
         else:
@@ -65,9 +69,24 @@ with st.form("hours"):
             for day, opens, closes, closed in rows:  # check every day first so nothing is half-saved
                 validate_hours(opens, closes, closed, label=WEEKDAY_NAMES[day])
             for day, opens, closes, closed in rows:
-                set_hours(conn, bid, day, opens, closes, closed)
+                set_hours(conn, bid, day, opens, closes, closed, actor=me)
         except Exception as exc:  # noqa: BLE001
             show_error(exc)
         else:
             flash("Opening hours saved.")
             st.rerun()
+
+if can(conn, bid, Permission.DELETE_OLD_MESSAGES):
+    st.subheader("Data retention")
+    st.caption("Chat messages hold customers' personal details. Delete the ones you no longer need.")
+    with st.form("retention"):
+        days = st.number_input("Delete chat messages older than (days)", min_value=1, max_value=3650,
+                               value=chat.DEFAULT_MESSAGE_RETENTION_DAYS, step=1)
+        if st.form_submit_button("Delete old messages"):
+            try:
+                deleted = chat.delete_old_messages(conn, bid, int(days), actor=me)
+            except Exception as exc:  # noqa: BLE001
+                show_error(exc)
+            else:
+                flash(f"Deleted {deleted} messages older than {int(days)} days.")
+                st.rerun()

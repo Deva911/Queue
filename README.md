@@ -28,6 +28,22 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 Streamlit prints a local address (usually http://localhost:8501). On first start the app creates `data/whatsapp_manager.db` with two demo businesses. Delete that file to start from scratch.
 
+The first time you open it, the app asks you to create the **platform admin** account (that's you). After that everyone signs in with email and password.
+
+## Who can do what
+
+| | Platform admin | Owner | Staff |
+|---|---|---|---|
+| Create businesses | ✓ | | |
+| Business profile, hours, services | every business | own business | |
+| Team (add or remove owners and staff) | every business | own business | |
+| Audit log, CSV export, delete old messages | every business | own business | |
+| Appointment requests, handoff inbox, leads, chat simulator | every business | own business | own business |
+
+Passwords are stored as salted scrypt hashes. Five wrong passwords lock the account for 15 minutes. Every page checks the signed-in person's role when it loads and again before it saves anything; hiding a menu item is never the only check. Roles come from the `memberships` table, re-read on every page load, so removing someone takes effect at once. Moving to Supabase Auth later replaces only the sign-in part (`services/auth_service.py`: `authenticate` and the password helpers); the roles and checks stay.
+
+Refreshing the browser tab signs you out (Streamlit keeps sign-in per tab). That's fine for a local prototype.
+
 Run the tests:
 
 ```powershell
@@ -38,11 +54,12 @@ python -m pytest -q
 
 | Page | What it does |
 |---|---|
-| Home | Sign up a new business; see pending requests and chats waiting for a person |
+| Home | See pending requests and chats waiting for a person; platform admin creates businesses; change your password |
 | Business profile | Name, contact details, time zone, logo, payment info, opening hours, active/inactive |
 | Services | Add, edit, activate and deactivate services (prices stored as whole cents) |
 | Chat simulator | Chat as a customer. Type numbers or the words HELP, MENU, BACK, HUMAN, or tap the option buttons |
 | Leads and appointments | Confirm, decline or cancel requests; reply to handed-over chats and hand them back; lead status; audit log; CSV export |
+| Team | Add owners and staff to a business, or remove them |
 
 The business picker in the sidebar is a demo convenience, **not a login**. Real logins and per-business access come with Supabase in Phase 2.
 

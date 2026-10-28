@@ -10,10 +10,11 @@ import streamlit as st  # noqa: E402
 from whatsapp_manager import repositories as repo  # noqa: E402
 from whatsapp_manager.models import ConversationStatus, Sender  # noqa: E402
 from whatsapp_manager.services import conversation_service as chat  # noqa: E402
+from whatsapp_manager.services.auth_service import Permission  # noqa: E402
 from whatsapp_manager.ui import page_setup, select_business, show_error  # noqa: E402
 
 conn = page_setup("Chat Simulator")
-business = select_business(conn)
+business = select_business(conn, Permission.USE_SIMULATOR)
 if not business:
     st.stop()
 bid = business["id"]
